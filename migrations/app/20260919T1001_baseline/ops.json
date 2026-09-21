@@ -1,0 +1,220 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.event",
+    "label": "Create table \"event\"",
+    "summary": "Creates table \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"event\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"event\"",
+        "sql": "CREATE TABLE \"public\".\"event\" (\n  \"category\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"endAt\" timestamptz NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"mode\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"organizerId\" int4 NOT NULL,\n  \"publishedAt\" timestamptz,\n  \"startAt\" timestamptz NOT NULL,\n  \"status\" text DEFAULT 'DRAFT' NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"event_status_check_d4cfa1e4\" CHECK (\"status\" IN ('DRAFT', 'SUBMITTED', 'PENDING_REVIEW', 'PUBLISHED', 'SENT_BACK', 'REJECTED', 'ONGOING', 'COMPLETED', 'CANCELLED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"event\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.organizer",
+    "label": "Create table \"organizer\"",
+    "summary": "Creates table \"organizer\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "organizer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"organizer\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"organizer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"organizer\"",
+        "sql": "CREATE TABLE \"public\".\"organizer\" (\n  \"city\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text,\n  \"id\" SERIAL NOT NULL,\n  \"kycStatus\" text DEFAULT 'PENDING' NOT NULL,\n  \"logoUrl\" text,\n  \"orgName\" text NOT NULL,\n  \"orgType\" text NOT NULL,\n  \"phone\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"organizer_kycStatus_check_d664bb10\" CHECK (\"kycStatus\" IN ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"organizer\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"organizer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.organizer.organizer_phone_key",
+    "label": "Add unique constraint on \"organizer\" (phone)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "organizer_phone_key",
+        "table": "organizer"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"organizer_phone_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "organizer_phone_key",
+          "public",
+          "\"public\".\"organizer\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"organizer_phone_key\"",
+        "sql": "ALTER TABLE \"public\".\"organizer\" ADD CONSTRAINT \"organizer_phone_key\" UNIQUE (\"phone\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"organizer_phone_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "organizer_phone_key",
+          "public",
+          "\"public\".\"organizer\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.event.event_organizerId_idx_17a44ca9",
+    "label": "Create index \"event_organizerId_idx_17a44ca9\" on \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "event_organizerId_idx_17a44ca9",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"event_organizerId_idx_17a44ca9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_organizerId_idx_17a44ca9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"event_organizerId_idx_17a44ca9\"",
+        "sql": "CREATE INDEX \"event_organizerId_idx_17a44ca9\" ON \"public\".\"event\" (\"organizerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"event_organizerId_idx_17a44ca9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"event_organizerId_idx_17a44ca9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.event.event_organizerId_fkey",
+    "label": "Add foreign key \"event_organizerId_fkey\" on \"event\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "event_organizerId_fkey",
+        "table": "event"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"event_organizerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "event_organizerId_fkey",
+          "public",
+          "\"public\".\"event\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"event_organizerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"event\"\nADD CONSTRAINT \"event_organizerId_fkey\"\nFOREIGN KEY (\"organizerId\")\nREFERENCES \"public\".\"organizer\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"event_organizerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "event_organizerId_fkey",
+          "public",
+          "\"public\".\"event\""
+        ]
+      }
+    ]
+  }
+]
