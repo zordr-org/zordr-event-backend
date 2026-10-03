@@ -1,0 +1,98 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organizer {
+  city      String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  email     String?
+  id        String   @id @default(uuid())
+  kycStatus String   @default("PENDING")
+  logoUrl   String?
+  orgName   String
+  orgType   String
+  phone     String   @unique
+  userId    String   @unique
+  events    Event[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("organizer")
+}
+
+model User {
+  branch       String
+  college      String
+  domain_email String
+  id           String     @id @default(uuid())
+  name         String
+  phone        String
+  year         Int
+  organizer    Organizer?
+
+  @@map("user")
+}
+
+model Event {
+  category    String
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  endAt       DateTime  @db.Timestamptz(6)
+  id          Int       @id @default(autoincrement())
+  mode        String
+  name        String
+  organizerId String
+  publishedAt DateTime? @db.Timestamptz(6)
+  startAt     DateTime  @db.Timestamptz(6)
+  status      String    @default("DRAFT")
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organizerId], map: "event_organizerId_idx_17a44ca9")
+  @@map("event")
+}
+
+model AdminEmployee {
+  email            String         @unique
+  failedLoginCount Int
+  id               String         @id @default(uuid())
+  lockedUntil      DateTime?      @db.Timestamptz(6)
+  name             String
+  passwordHash     String
+  role             String
+  status           String
+  twoFactorEnabled Boolean
+  twoFactorSecret  String?
+  refreshTokens    RefreshToken[]
+
+  @@map("adminEmployee")
+}
+
+model RefreshToken {
+  adminId   String
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime      @db.Timestamptz(6)
+  id        String        @id @default(uuid())
+  revokedAt DateTime?     @db.Timestamptz(6)
+  tokenHash String        @unique
+  admin     AdminEmployee @relation(fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([adminId], map: "refreshToken_adminId_idx_530179db")
+  @@map("refreshToken")
+}
+
+model AuditLog {
+  action     String
+  actorId    String
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  entityId   String
+  entityType String
+  id         String   @id @default(uuid())
+
+  @@map("auditLog")
+}
