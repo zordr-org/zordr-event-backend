@@ -1,8 +1,19 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { UsersService } from '../users/users.service.js';
 
-const jwks = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!));
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function getJwks() {
+  if (!jwks) {
+    const url = process.env.NEON_AUTH_JWKS_URL;
+    if (!url) {
+      throw new InternalServerErrorException('NEON_AUTH_JWKS_URL is not configured');
+    }
+    jwks = createRemoteJWKSet(new URL(url));
+  }
+  return jwks;
+}
 
 @Injectable()
 export class NeonAuthGuard implements CanActivate {
@@ -20,9 +31,10 @@ export class NeonAuthGuard implements CanActivate {
 
     let payload;
     try {
-      const result = await jwtVerify(token, jwks);
+      const result = await jwtVerify(token, getJwks());
       payload = result.payload;
-    } catch {
+    } catch (err) {
+      if (err instanceof InternalServerErrorException) throw err;
       throw new UnauthorizedException('Invalid or expired token');
     }
 
