@@ -1,98 +1,1418 @@
+// Proposed shared Zordr platform schema. This is a target design, not a migration.
+
 generator client {
-  provider            = "prisma-client"
-  output              = "../generated/prisma"
-  moduleFormat        = "esm"
+  provider             = "prisma-client"
+  output               = "../generated/prisma"
+  moduleFormat         = "esm"
   generatedFileExtension = "ts"
-  importFileExtension = "js"
+  importFileExtension  = "js"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model Organizer {
-  city      String?
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  email     String?
-  id        String   @id @default(uuid())
-  kycStatus String   @default("PENDING")
-  logoUrl   String?
-  orgName   String
-  orgType   String
-  phone     String   @unique
-  userId    String   @unique
-  events    Event[]
-  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+enum ActorType {
+  CUSTOMER
+  ORGANIZER
+  ADMIN_EMPLOYEE
+  SYSTEM
+}
 
-  @@map("organizer")
+enum AccountStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  BLOCKED
+  SUSPENDED
+  DELETED
+}
+
+enum OnboardingStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum OrganizerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BLOCKED
+  SUSPENDED
+}
+
+enum KycStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum EventStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_REVIEW
+  SENT_BACK
+  REJECTED
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum EventMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum EventVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  SENT_BACK
+  REJECTED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum TicketTypeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RegistrationFieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  RADIO
+  FILE
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  PAYMENT_PENDING
+  AWAITING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  CANCELLED
+  REFUND_PENDING
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  PENDING
+  PROCESSED
+  FAILED
+  REJECTED
+}
+
+enum InventoryHoldStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
+  EXPIRED
+}
+
+enum TicketStatus {
+  VALID
+  CHECKED_IN
+  CANCELLED
+  REFUNDED
+  VOID
+  EXPIRED
+}
+
+enum CheckInMethod {
+  QR
+  MANUAL
+  OFFLINE_SYNC
+}
+
+enum SettlementStatus {
+  DRAFT
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  ON_HOLD
+  CANCELLED
+}
+
+enum PayoutAttemptStatus {
+  CREATED
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+  IN_APP
+}
+
+enum DeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum DocumentStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum PayoutAccountStatus {
+  PENDING
+  VERIFICATION_REQUIRED
+  VERIFIED
+  REJECTED
+  BLOCKED
+}
+
+enum ScanResult {
+  ACCEPTED
+  ALREADY_USED
+  INVALID
+  CANCELLED
+  WRONG_EVENT
+  EXPIRED
+}
+
+enum SettlementItemType {
+  SALE
+  REFUND_ADJUSTMENT
+  MANUAL_ADJUSTMENT
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+enum AdminModule {
+  DASHBOARD
+  ORGANIZERS
+  EVENTS
+  ORDERS
+  CUSTOMERS
+  SETTLEMENTS
+  REFUNDS
+  SUPPORT
+  ANALYTICS
+  EMPLOYEES
+  ROLES
+  SETTINGS
+}
+
+enum AdminAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  EXPORT
 }
 
 model User {
-  branch       String
-  college      String
-  domain_email String
-  id           String     @id @default(uuid())
-  name         String
-  phone        String
-  year         Int
-  organizer    Organizer?
+  id             String        @id
+  name           String?
+  domain_email   String?       @unique
+  phone          String?       @unique
+  status         AccountStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?    @db.Timestamptz(6)
+  phoneVerifiedAt DateTime?    @db.Timestamptz(6)
+  avatarUrl      String?
+  city           String?
+  state          String?
+  college        String?
+  branch         String?
+  year           Int?
+  rollNumber     String?
+  language       String?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime?     @db.Timestamptz(6)
 
+  organizer           Organizer?              @relation("OrganizerOwner")
+  teamMemberships     TeamMember[]
+  orders              Order[]
+  registrations       Registration[]
+  wishlist            Wishlist[]
+  loyaltyEntries      LoyaltyLedger[]
+  notificationPreferences NotificationPreference[]
+  interests           UserInterest[]
+  supportRequests     SupportTicket[]          @relation("CustomerSupportRequests")
+
+  @@index([status, createdAt])
   @@map("user")
 }
 
-model Event {
-  category    String
-  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
-  endAt       DateTime  @db.Timestamptz(6)
-  id          Int       @id @default(autoincrement())
-  mode        String
-  name        String
-  organizerId String
-  publishedAt DateTime? @db.Timestamptz(6)
-  startAt     DateTime  @db.Timestamptz(6)
-  status      String    @default("DRAFT")
-  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model Organizer {
+  id             String          @id @default(uuid()) @db.Uuid
+  userId         String          @unique
+  slug           String?         @unique
+  orgName        String
+  orgType        String?
+  description    String?
+  email          String?
+  phone          String          @unique
+  alternatePhone String?
+  website        String?
+  instagramUrl   String?
+  logoUrl        String?
+  address        String?
+  city           String?
+  state          String?
+  pincode        String?
+  status         OrganizerStatus @default(PENDING)
+  kycStatus      KycStatus       @default(PENDING)
+  approvedAt     DateTime?       @db.Timestamptz(6)
+  approvedById   String?         @db.Uuid
+  rejectionReason String?
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime?       @db.Timestamptz(6)
 
-  @@index([organizerId], map: "event_organizerId_idx_17a44ca9")
-  @@map("event")
+  user          User                @relation("OrganizerOwner", fields: [userId], references: [id], onDelete: Restrict)
+  onboarding    OrganizerOnboarding?
+  approvedBy    AdminEmployee?      @relation("OrganizerApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  events        Event[]
+  teamMembers   TeamMember[]
+  teamInvites   OrganizerTeamInvite[]
+  documents     OrganizerDocument[]
+  payoutAccounts PayoutAccount[]
+  roles         OrganizerRole[]
+  notes         OrganizerNote[]
+  venues        Venue[]
+  settlements   Settlement[]
+  supportTickets SupportTicket[]
+
+  @@index([status, kycStatus])
+  @@map("organizers")
+}
+
+model OrganizerOnboarding {
+  id                String           @id @default(uuid()) @db.Uuid
+  organizerId       String           @unique @db.Uuid
+  selectedPayoutAccountId String?    @unique @db.Uuid
+  status            OnboardingStatus @default(DRAFT)
+  currentStep       Int              @default(1)
+  termsAcceptedAt   DateTime?        @db.Timestamptz(6)
+  submittedAt       DateTime?        @db.Timestamptz(6)
+  reviewedAt        DateTime?        @db.Timestamptz(6)
+  rejectionReason   String?
+  createdAt         DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(6)
+  organizer         Organizer        @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  selectedPayoutAccount PayoutAccount? @relation(fields: [selectedPayoutAccountId], references: [id], onDelete: Restrict)
+
+  @@index([status, submittedAt])
+  @@map("organizer_onboardings")
+}
+
+model OrganizerDocument {
+  id           String         @id @default(uuid()) @db.Uuid
+  organizerId  String         @db.Uuid
+  documentType String
+  objectKey    String
+  status       DocumentStatus @default(PENDING)
+  reviewNotes  String?
+  reviewedById String?        @db.Uuid
+  reviewedAt   DateTime?      @db.Timestamptz(6)
+  expiresAt    DateTime?      @db.Timestamptz(6)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(6)
+  organizer    Organizer      @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  reviewedBy   AdminEmployee? @relation("OrganizerDocumentReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizerId, status])
+  @@map("organizer_documents")
+}
+
+model PayoutAccount {
+  id                     String            @id @default(uuid()) @db.Uuid
+  organizerId            String            @db.Uuid
+  accountHolderName      String
+  bankName               String?
+  branchName             String?
+  accountNumberEncrypted String?
+  accountLast4           String?
+  ifscCode               String?
+  upiId                  String?
+  razorpayFundAccountId  String?           @unique
+  status                 PayoutAccountStatus @default(PENDING)
+  verifiedAt             DateTime?         @db.Timestamptz(6)
+  isActive               Boolean           @default(true)
+  createdAt              DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime          @updatedAt @db.Timestamptz(6)
+  organizer              Organizer         @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  payoutAttempts         SettlementPayoutAttempt[]
+  onboarding             OrganizerOnboarding?
+
+  @@index([organizerId, isActive, createdAt])
+  @@map("payout_accounts")
+}
+
+model OrganizerNote {
+  id          String   @id @default(uuid()) @db.Uuid
+  organizerId String   @db.Uuid
+  authorId    String   @db.Uuid
+  note        String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  author      AdminEmployee @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([organizerId, createdAt])
+  @@map("organizer_notes")
+}
+
+model TeamMember {
+  id          String   @id @default(uuid()) @db.Uuid
+  organizerId String   @db.Uuid
+  userId      String
+  isActive    Boolean  @default(true)
+  joinedAt    DateTime @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  roles       TeamMemberRole[]
+  eventAccess TeamMemberEventAccess[]
+
+  @@unique([organizerId, userId])
+  @@index([userId, isActive])
+  @@index([organizerId, isActive])
+  @@map("team_members")
+}
+
+model OrganizerTeamInvite {
+  id          String    @id @default(uuid()) @db.Uuid
+  organizerId String    @db.Uuid
+  email       String
+  tokenHash   String    @unique
+  roleId      String    @db.Uuid
+  expiresAt   DateTime  @db.Timestamptz(6)
+  acceptedAt  DateTime? @db.Timestamptz(6)
+  revokedAt   DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  role        OrganizerRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  eventScope  OrganizerTeamInviteEvent[]
+
+  @@index([organizerId, email])
+  @@index([expiresAt, acceptedAt, revokedAt])
+  @@map("organizer_team_invites")
+}
+
+model OrganizerTeamInviteEvent {
+  inviteId String @db.Uuid
+  eventId  String @db.Uuid
+  invite   OrganizerTeamInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([inviteId, eventId])
+  @@map("organizer_team_invite_events")
+}
+
+model OrganizerRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  organizerId String   @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  members     TeamMemberRole[]
+  permissions OrganizerRolePermission[]
+  invites     OrganizerTeamInvite[]
+
+  @@unique([organizerId, name])
+  @@map("organizer_roles")
+}
+
+model OrganizerRolePermission {
+  id         String @id @default(uuid()) @db.Uuid
+  roleId     String @db.Uuid
+  permission String
+  role       OrganizerRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+  @@map("organizer_role_permissions")
+}
+
+model TeamMemberRole {
+  teamMemberId String @db.Uuid
+  roleId       String @db.Uuid
+  teamMember   TeamMember   @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  role         OrganizerRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([teamMemberId, roleId])
+  @@map("team_member_roles")
+}
+
+model TeamMemberEventAccess {
+  id           String   @id @default(uuid()) @db.Uuid
+  teamMemberId String   @db.Uuid
+  eventId      String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  event        Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  permissions  TeamMemberEventPermission[]
+
+  @@unique([teamMemberId, eventId])
+  @@index([eventId])
+  @@map("team_member_event_access")
+}
+
+model TeamMemberEventPermission {
+  id            String @id @default(uuid()) @db.Uuid
+  eventAccessId String @db.Uuid
+  permission    String
+  eventAccess   TeamMemberEventAccess @relation(fields: [eventAccessId], references: [id], onDelete: Cascade)
+
+  @@unique([eventAccessId, permission])
+  @@map("team_member_event_permissions")
+}
+
+model Venue {
+  id          String   @id @default(uuid()) @db.Uuid
+  organizerId String   @db.Uuid
+  name        String?
+  address     String?
+  city        String?
+  state       String?
+  pincode     String?
+  mapUrl      String?
+  instructions String?
+  meetingLink String?
+  latitude    Decimal? @db.Decimal(10, 7)
+  longitude   Decimal? @db.Decimal(10, 7)
+  facilities  Json?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  events      Event[]   @relation("PrimaryVenue")
+  sessions    EventSession[]
+
+  @@index([organizerId, city])
+  @@map("venues")
+}
+
+model Event {
+  id                  String          @id @default(uuid()) @db.Uuid
+  organizerId         String          @db.Uuid
+  venueId             String?         @db.Uuid
+  slug                String          @unique
+  name                String
+  shortDescription    String?
+  description         String?
+  mode                EventMode
+  visibility          EventVisibility @default(PUBLIC)
+  status              EventStatus     @default(DRAFT)
+  startAt             DateTime        @db.Timestamptz(6)
+  endAt               DateTime        @db.Timestamptz(6)
+  timezone            String          @default("Asia/Kolkata")
+  registrationOpensAt DateTime?       @db.Timestamptz(6)
+  registrationClosesAt DateTime?      @db.Timestamptz(6)
+  maxAttendees        Int?
+  waitlistEnabled     Boolean         @default(false)
+  ageLimit            Int?
+  consentText         String?
+  showAttendeeList    Boolean         @default(false)
+  showTerms           Boolean         @default(true)
+  termsAndConditions  String?
+  city                String?
+  state               String?
+  isFeatured          Boolean         @default(false)
+  publishedAt         DateTime?       @db.Timestamptz(6)
+  submittedAt         DateTime?       @db.Timestamptz(6)
+  scheduledPublishAt  DateTime?       @db.Timestamptz(6)
+  cancellationReason  String?
+  createdAt           DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime        @updatedAt @db.Timestamptz(6)
+  deletedAt           DateTime?       @db.Timestamptz(6)
+
+  organizer          Organizer                @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  primaryVenue       Venue?                   @relation("PrimaryVenue", fields: [venueId], references: [id], onDelete: SetNull)
+  categories         EventCategory[]
+  tags               EventTag[]
+  ticketTypes        TicketType[]
+  registrationFields RegistrationField[]
+  orders             Order[]
+  sessions           EventSession[]
+  mediaAssets        MediaAsset[]
+  reviews            EventReview[]
+  wishlists          Wishlist[]
+  faqs               EventFaq[]
+  waitlistEntries    WaitlistEntry[]
+  supportTickets     SupportTicket[]
+  scanAttempts       ScanAttempt[]
+  teamMemberAccess   TeamMemberEventAccess[]
+  teamInvites        OrganizerTeamInviteEvent[]
+
+  @@index([organizerId, status])
+  @@index([status, startAt])
+  @@index([city, state, startAt])
+  @@index([isFeatured, status, startAt])
+  @@map("events")
+}
+
+model EventSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  venueId   String?  @db.Uuid
+  name      String
+  description String?
+  startsAt  DateTime @db.Timestamptz(6)
+  endsAt    DateTime @db.Timestamptz(6)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  venue     Venue?   @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, startsAt, sortOrder])
+  @@map("event_sessions")
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  iconUrl     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  events      EventCategory[]
+  interests   UserInterest[]
+
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model EventCategory {
+  eventId    String @db.Uuid
+  categoryId String @db.Uuid
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, categoryId])
+  @@index([categoryId, eventId])
+  @@map("event_categories")
+}
+
+model UserInterest {
+  userId     String
+  categoryId String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, categoryId])
+  @@index([categoryId, userId])
+  @@map("user_interests")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  slug      String   @unique
+  events    EventTag[]
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("tags")
+}
+
+model EventTag {
+  eventId String @db.Uuid
+  tagId   String @db.Uuid
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, tagId])
+  @@map("event_tags")
+}
+
+model EventFaq {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @db.Uuid
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, sortOrder])
+  @@map("event_faqs")
+}
+
+model MediaAsset {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventId     String    @db.Uuid
+  mediaType   MediaType
+  objectKey   String?
+  externalUrl String?
+  altText     String?
+  caption     String?
+  sortOrder   Int       @default(0)
+  isPrimary   Boolean   @default(false)
+  processing  String    @default("READY")
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, sortOrder])
+  @@map("media_assets")
+}
+
+model EventReview {
+  id           String       @id @default(uuid()) @db.Uuid
+  eventId      String       @db.Uuid
+  status       ReviewStatus @default(PENDING)
+  reviewerId   String?      @db.Uuid
+  reviewNotes  String?
+  checklist    Json?
+  snapshot     Json?
+  version      Int          @default(1)
+  submittedAt  DateTime     @default(now()) @db.Timestamptz(6)
+  reviewedAt   DateTime?    @db.Timestamptz(6)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  reviewer     AdminEmployee? @relation("EventReviewers", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, version])
+  @@index([eventId, submittedAt])
+  @@index([status, submittedAt])
+  @@map("event_reviews")
+}
+
+model TicketType {
+  id             String          @id @default(uuid()) @db.Uuid
+  eventId        String          @db.Uuid
+  name           String
+  description    String?
+  perks          Json?
+  pricePaise     BigInt
+  originalPricePaise BigInt?
+  currency       String          @default("INR")
+  totalQuantity  Int
+  soldQuantity   Int             @default(0)
+  reservedQuantity Int           @default(0)
+  purchaseLimit  Int?
+  minimumPurchase Int            @default(1)
+  visible        Boolean         @default(true)
+  sortOrder      Int             @default(0)
+  salesStartAt   DateTime?       @db.Timestamptz(6)
+  salesEndAt     DateTime?       @db.Timestamptz(6)
+  status         TicketTypeStatus @default(ACTIVE)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+  event          Event           @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  orderItems     OrderItem[]
+  inventoryHolds InventoryHold[]
+  waitlistEntries WaitlistEntry[]
+
+  @@unique([eventId, name])
+  @@unique([id, eventId])
+  @@index([eventId, status, visible, sortOrder])
+  @@map("ticket_types")
+}
+
+model RegistrationField {
+  id           String                @id @default(uuid()) @db.Uuid
+  eventId      String                @db.Uuid
+  fieldKey     String
+  label        String
+  description  String?
+  fieldType    RegistrationFieldType
+  required     Boolean               @default(false)
+  options      Json?
+  validation   Json?
+  section      String?
+  sortOrder    Int                   @default(0)
+  isSystem     Boolean               @default(false)
+  isActive     Boolean               @default(true)
+  version      Int                   @default(1)
+  createdAt    DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @db.Timestamptz(6)
+  event        Event                 @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, fieldKey, version])
+  @@index([eventId, isActive, sortOrder])
+  @@map("registration_fields")
+}
+
+model Order {
+  id                String      @id @default(uuid()) @db.Uuid
+  orderNumber       String      @unique
+  userId            String
+  eventId           String      @db.Uuid
+  status            OrderStatus @default(PENDING)
+  currency          String      @default("INR")
+  subtotalPaise     BigInt
+  discountPaise     BigInt      @default(0)
+  convenienceFeePaise BigInt    @default(0)
+  platformFeePaise  BigInt      @default(0)
+  gatewayFeePaise   BigInt      @default(0)
+  taxPaise          BigInt      @default(0)
+  totalPaise        BigInt
+  feeConfigId       String      @db.Uuid
+  feeSnapshot       Json
+  pricingVersion    String
+  paymentCapturedAt DateTime?   @db.Timestamptz(6)
+  expiresAt         DateTime?   @db.Timestamptz(6)
+  idempotencyKey    String
+  requestHash       String
+  createdAt         DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime    @updatedAt @db.Timestamptz(6)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  event             Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  feeConfig         FeeConfig   @relation(fields: [feeConfigId], references: [id], onDelete: Restrict)
+  items             OrderItem[]
+  payments          Payment[]
+  inventoryHolds    InventoryHold[]
+  refunds           Refund[]
+  settlementItems   SettlementItem[]
+  waitlistEntry     WaitlistEntry?
+  invoice           Invoice?
+  supportTickets    SupportTicket[]
+  loyaltyEntries    LoyaltyLedger[]
+
+  @@unique([userId, idempotencyKey])
+  @@unique([id, eventId])
+  @@index([userId, createdAt])
+  @@index([eventId, status, createdAt])
+  @@index([status, expiresAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  orderId           String   @db.Uuid
+  eventId           String   @db.Uuid
+  ticketTypeId      String   @db.Uuid
+  ticketNameSnapshot String
+  quantity          Int
+  unitPricePaise    BigInt
+  lineSubtotalPaise BigInt
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  order             Order    @relation(fields: [orderId, eventId], references: [id, eventId], onDelete: Restrict)
+  ticketType        TicketType @relation(fields: [ticketTypeId, eventId], references: [id, eventId], onDelete: Restrict)
+  tickets           Ticket[]
+  registrations     Registration[]
+
+  @@unique([orderId, ticketTypeId])
+  @@index([eventId])
+  @@index([ticketTypeId])
+  @@map("order_items")
+}
+
+model InventoryHold {
+  id           String            @id @default(uuid()) @db.Uuid
+  orderId      String            @db.Uuid
+  eventId      String            @db.Uuid
+  ticketTypeId String            @db.Uuid
+  quantity     Int
+  status       InventoryHoldStatus @default(ACTIVE)
+  expiresAt    DateTime          @db.Timestamptz(6)
+  releasedAt   DateTime?         @db.Timestamptz(6)
+  consumedAt   DateTime?         @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
+  order        Order             @relation(fields: [orderId, eventId], references: [id, eventId], onDelete: Restrict)
+  ticketType   TicketType        @relation(fields: [ticketTypeId, eventId], references: [id, eventId], onDelete: Restrict)
+
+  @@unique([orderId, ticketTypeId])
+  @@index([eventId])
+  @@index([status, expiresAt])
+  @@index([ticketTypeId, status, expiresAt])
+  @@map("inventory_holds")
+}
+
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  orderId            String        @db.Uuid
+  provider           PaymentProvider @default(RAZORPAY)
+  providerOrderId    String?       @unique
+  providerPaymentId  String?       @unique
+  amountPaise        BigInt
+  currency           String        @default("INR")
+  status             PaymentStatus @default(CREATED)
+  paymentMethod      String?
+  failureCode        String?
+  failureMessage     String?
+  idempotencyKey     String
+  initiatedAt        DateTime      @default(now()) @db.Timestamptz(6)
+  authorizedAt       DateTime?     @db.Timestamptz(6)
+  capturedAt         DateTime?     @db.Timestamptz(6)
+  failedAt           DateTime?     @db.Timestamptz(6)
+  createdAt          DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @db.Timestamptz(6)
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  refunds            Refund[]
+
+  @@unique([orderId, idempotencyKey])
+  @@unique([id, orderId])
+  @@index([orderId, status])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+model WebhookEvent {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  provider           PaymentProvider
+  providerEventId    String
+  eventType          String
+  payload            Json
+  signatureVerifiedAt DateTime               @db.Timestamptz(6)
+  status             WebhookProcessingStatus @default(RECEIVED)
+  attemptCount       Int                    @default(0)
+  availableAt        DateTime               @default(now()) @db.Timestamptz(6)
+  processingStartedAt DateTime?              @db.Timestamptz(6)
+  receivedAt         DateTime               @default(now()) @db.Timestamptz(6)
+  processedAt        DateTime?              @db.Timestamptz(6)
+  processingError    String?
+
+  @@unique([provider, providerEventId])
+  @@index([status, availableAt])
+  @@index([processedAt])
+  @@map("webhook_events")
+}
+
+model Registration {
+  id               String   @id @default(uuid()) @db.Uuid
+  orderItemId      String   @db.Uuid
+  userId           String?
+  attendeeName     String
+  attendeeEmail    String?
+  attendeePhone    String?
+  answers          Json     @default("{}")
+  formSnapshot     Json
+  consentedAt      DateTime? @db.Timestamptz(6)
+  consentVersion   String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ticket           Ticket?
+
+  @@index([orderItemId])
+  @@index([attendeeEmail])
+  @@map("registrations")
+}
+
+model Ticket {
+  id              String       @id @default(uuid()) @db.Uuid
+  orderItemId     String       @db.Uuid
+  registrationId  String?      @unique @db.Uuid
+  qrTokenHash     String       @unique
+  status          TicketStatus @default(VALID)
+  issuedAt        DateTime     @default(now()) @db.Timestamptz(6)
+  checkedInAt     DateTime?    @db.Timestamptz(6)
+  cancelledAt     DateTime?   @db.Timestamptz(6)
+  orderItem       OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  registration    Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  checkIns        CheckIn[]
+  scanAttempts    ScanAttempt[]
+
+  @@index([orderItemId, status])
+  @@map("tickets")
+}
+
+model CheckIn {
+  id             String        @id @default(uuid()) @db.Uuid
+  ticketId       String        @db.Uuid
+  entryNumber    Int           @default(1)
+  scannedByActorType ActorType
+  scannedByActorId String
+  method         CheckInMethod @default(QR)
+  clientEventId  String?       @unique
+  checkedInAt    DateTime      @default(now()) @db.Timestamptz(6)
+  ticket         Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@unique([ticketId, entryNumber])
+  @@index([ticketId, checkedInAt])
+  @@map("check_ins")
+}
+
+model ScanAttempt {
+  id             String     @id @default(uuid()) @db.Uuid
+  eventId        String     @db.Uuid
+  ticketId       String?    @db.Uuid
+  scannerActorId String
+  result         ScanResult
+  scannedAt      DateTime   @default(now()) @db.Timestamptz(6)
+  clientEventId  String?    @unique
+  details        Json?
+  ticket         Ticket?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  event          Event      @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, result, scannedAt])
+  @@map("scan_attempts")
+}
+
+model FeeConfig {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String
+  platformFeePct     Decimal  @db.Decimal(7, 4)
+  perTicketFeePaise  BigInt
+  convenienceFeePaise BigInt
+  gatewayFeePct      Decimal  @db.Decimal(7, 4)
+  gstRatePct         Decimal  @db.Decimal(7, 4)
+  feesTaxable        Boolean
+  customerPaysFees   Boolean
+  effectiveFrom      DateTime @db.Timestamptz(6)
+  effectiveUntil     DateTime? @db.Timestamptz(6)
+  createdByActorType ActorType?
+  createdByActorId   String?
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  orders             Order[]
+
+  @@unique([name, effectiveFrom])
+  @@index([effectiveFrom, effectiveUntil])
+  @@map("fee_configs")
+}
+
+model Settlement {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizerId     String           @db.Uuid
+  periodStart     DateTime         @db.Timestamptz(6)
+  periodEnd       DateTime         @db.Timestamptz(6)
+  currency        String           @default("INR")
+  grossAmountPaise BigInt
+  platformFeesPaise BigInt        @default(0)
+  gatewayFeesPaise BigInt         @default(0)
+  refundsPaise    BigInt          @default(0)
+  adjustmentsPaise BigInt         @default(0)
+  netAmountPaise  BigInt
+  status          SettlementStatus @default(DRAFT)
+  generatedAt     DateTime?        @db.Timestamptz(6)
+  approvedAt      DateTime?        @db.Timestamptz(6)
+  paidAt          DateTime?        @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+  organizer       Organizer        @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  items           SettlementItem[]
+  payoutAttempts  SettlementPayoutAttempt[]
+  statements      SettlementStatement[]
+
+  @@index([organizerId, status, periodStart])
+  @@index([periodStart, periodEnd])
+  @@unique([organizerId, periodStart, periodEnd, currency])
+  @@map("settlements")
+}
+
+model SettlementItem {
+  id             String             @id @default(uuid()) @db.Uuid
+  settlementId   String             @db.Uuid
+  orderId        String             @db.Uuid
+  type           SettlementItemType
+  sourceKey      String             @unique
+  grossAmountPaise BigInt
+  feePaise       BigInt             @default(0)
+  refundPaise    BigInt             @default(0)
+  netAmountPaise BigInt
+  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
+  settlement     Settlement         @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+  order          Order              @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, type])
+  @@map("settlement_items")
+}
+
+model SettlementPayoutAttempt {
+  id                 String              @id @default(uuid()) @db.Uuid
+  settlementId       String              @db.Uuid
+  attemptNumber      Int
+  providerPayoutId   String?             @unique
+  status             PayoutAttemptStatus @default(CREATED)
+  failureCode        String?
+  failureMessage     String?
+  initiatedAt        DateTime            @default(now()) @db.Timestamptz(6)
+  completedAt        DateTime?           @db.Timestamptz(6)
+  payoutAccountId    String?             @db.Uuid
+  settlement         Settlement          @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+  payoutAccount      PayoutAccount?      @relation(fields: [payoutAccountId], references: [id], onDelete: SetNull)
+
+  @@unique([settlementId, attemptNumber])
+  @@index([payoutAccountId])
+  @@map("settlement_payout_attempts")
+}
+
+model Refund {
+  id                 String       @id @default(uuid()) @db.Uuid
+  orderId            String       @db.Uuid
+  paymentId          String       @db.Uuid
+  amountPaise        BigInt
+  currency           String       @default("INR")
+  reason             String?
+  status             RefundStatus @default(REQUESTED)
+  providerRefundId   String?      @unique
+  idempotencyKey     String
+  requestedByType    ActorType
+  requestedById      String
+  processedAt        DateTime?    @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @db.Timestamptz(6)
+  order              Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment            Payment      @relation(fields: [paymentId, orderId], references: [id, orderId], onDelete: Restrict)
+
+  @@unique([orderId, idempotencyKey])
+  @@index([orderId, status])
+  @@index([paymentId, status])
+  @@index([status, createdAt])
+  @@map("refunds")
 }
 
 model AdminEmployee {
-  email            String         @unique
-  failedLoginCount Int
-  id               String         @id @default(uuid())
-  lockedUntil      DateTime?      @db.Timestamptz(6)
-  name             String
-  passwordHash     String
-  role             String
-  status           String
-  twoFactorEnabled Boolean
-  twoFactorSecret  String?
-  refreshTokens    RefreshToken[]
+  id                String        @id @default(uuid()) @db.Uuid
+  email             String        @unique
+  name              String
+  passwordHash      String
+  department        String?
+  status            String        @default("invited")
+  failedLoginCount  Int           @default(0)
+  lockedUntil       DateTime?     @db.Timestamptz(6)
+  twoFactorEnabled  Boolean       @default(false)
+  /// Encrypt with an authenticated encryption scheme before persistence; never store plaintext TOTP secrets.
+  twoFactorSecret   String?
+  invitedAt         DateTime?     @db.Timestamptz(6)
+  lastActiveAt      DateTime?     @db.Timestamptz(6)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
+  role              String
+  roleDefinition    Role          @relation(fields: [role], references: [name], onDelete: Restrict)
+  refreshTokens     RefreshToken[]
+  supportTickets    SupportTicket[]
+  organizerApprovals Organizer[]  @relation("OrganizerApprovals")
+  reviewedOrganizerDocuments OrganizerDocument[] @relation("OrganizerDocumentReviews")
+  organizerNotes    OrganizerNote[]
+  eventReviews      EventReview[]  @relation("EventReviewers")
+  platformSettings  PlatformSetting[]
+  invitesSent       AdminInvite[] @relation("AdminInviteIssuer")
 
-  @@map("adminEmployee")
+  @@index([status, createdAt])
+  @@map("admin_employees")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  isSystem     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  employees   AdminEmployee[]
+  permissions RolePermission[]
+  invites     AdminInvite[]
+
+  @@map("admin_roles")
+}
+
+model AdminInvite {
+  id          String        @id @default(uuid()) @db.Uuid
+  email       String
+  roleId      String        @db.Uuid
+  issuedById  String        @db.Uuid
+  tokenHash   String        @unique
+  expiresAt   DateTime      @db.Timestamptz(6)
+  acceptedAt  DateTime?     @db.Timestamptz(6)
+  revokedAt   DateTime?     @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  role        Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  issuedBy    AdminEmployee @relation("AdminInviteIssuer", fields: [issuedById], references: [id], onDelete: Restrict)
+
+  @@index([email, expiresAt])
+  @@map("admin_invites")
+}
+
+model RolePermission {
+  roleId   String      @db.Uuid
+  module   AdminModule
+  action   AdminAction
+  role     Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, module, action])
+  @@map("role_permissions")
 }
 
 model RefreshToken {
-  adminId   String
-  createdAt DateTime      @default(now()) @db.Timestamptz(6)
-  expiresAt DateTime      @db.Timestamptz(6)
-  id        String        @id @default(uuid())
-  revokedAt DateTime?     @db.Timestamptz(6)
+  id        String        @id @default(uuid()) @db.Uuid
+  adminId   String        @db.Uuid
   tokenHash String        @unique
-  admin     AdminEmployee @relation(fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  expiresAt DateTime      @db.Timestamptz(6)
+  revokedAt DateTime?     @db.Timestamptz(6)
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  admin     AdminEmployee @relation(fields: [adminId], references: [id], onDelete: Restrict)
 
-  @@index([adminId], map: "refreshToken_adminId_idx_530179db")
-  @@map("refreshToken")
+  @@index([adminId, expiresAt])
+  @@map("refresh_tokens")
+}
+
+model SupportTicket {
+  id              String         @id @default(uuid()) @db.Uuid
+  requesterType   ActorType
+  customerId      String?
+  organizerId     String?        @db.Uuid
+  assignedToId    String?        @db.Uuid
+  eventId         String?        @db.Uuid
+  orderId         String?        @db.Uuid
+  subject         String
+  description     String
+  category        String?
+  priority        SupportPriority @default(MEDIUM)
+  status          SupportStatus  @default(OPEN)
+  firstResponseAt DateTime?      @db.Timestamptz(6)
+  slaDueAt        DateTime?      @db.Timestamptz(6)
+  resolvedAt      DateTime?      @db.Timestamptz(6)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
+  customer        User?          @relation("CustomerSupportRequests", fields: [customerId], references: [id], onDelete: SetNull)
+  organizer       Organizer?     @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  assignedAdmin   AdminEmployee? @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  event           Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  order           Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  messages        SupportMessage[]
+
+  @@index([status, priority, createdAt])
+  @@index([assignedToId, status])
+  @@index([customerId, createdAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id              String   @id @default(uuid()) @db.Uuid
+  ticketId        String   @db.Uuid
+  authorType      ActorType
+  authorId        String
+  body            String
+  attachmentKeys  Json?
+  isInternalNote  Boolean  @default(false)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
+}
+
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String
+  eventId   String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, eventId])
+  @@index([userId, createdAt])
+  @@map("wishlists")
+}
+
+model LoyaltyLedger {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String
+  orderId         String?  @db.Uuid
+  pointsDelta     Int
+  transactionType String
+  idempotencyKey  String   @unique
+  description     String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@map("loyalty_ledger")
+}
+
+model NotificationPreference {
+  userId    String
+  channel   NotificationChannel
+  category  String
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([userId, channel, category])
+  @@map("notification_preferences")
+}
+
+model NotificationLog {
+  id             String            @id @default(uuid()) @db.Uuid
+  recipientType  ActorType
+  recipientId    String
+  channel        NotificationChannel
+  templateKey    String
+  status         DeliveryStatus    @default(QUEUED)
+  providerRef    String?
+  relatedOrderId String?           @db.Uuid
+  relatedEventId String?           @db.Uuid
+  attemptCount   Int               @default(0)
+  nextAttemptAt  DateTime?          @db.Timestamptz(6)
+  sentAt         DateTime?          @db.Timestamptz(6)
+  error          String?
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+
+  @@index([recipientType, recipientId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("notification_logs")
+}
+
+model WaitlistEntry {
+  id           String         @id @default(uuid()) @db.Uuid
+  eventId      String         @db.Uuid
+  ticketTypeId String         @db.Uuid
+  userId       String
+  status       WaitlistStatus @default(WAITING)
+  position     Int
+  offeredAt    DateTime?      @db.Timestamptz(6)
+  expiresAt    DateTime?      @db.Timestamptz(6)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(6)
+  event        Event          @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketType   TicketType     @relation(fields: [ticketTypeId, eventId], references: [id, eventId], onDelete: Restrict)
+  order        Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderId      String?        @unique @db.Uuid
+
+  @@unique([eventId, ticketTypeId, userId])
+  @@index([eventId, ticketTypeId, status, position])
+  @@map("waitlist_entries")
+}
+
+model Invoice {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @unique @db.Uuid
+  invoiceNumber   String   @unique
+  issuedAt        DateTime @default(now()) @db.Timestamptz(6)
+  documentKey     String?
+  taxSnapshot     Json
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@map("invoices")
+}
+
+model SettlementStatement {
+  id            String     @id @default(uuid()) @db.Uuid
+  settlementId  String     @db.Uuid
+  statementNumber String   @unique
+  issuedAt      DateTime   @default(now()) @db.Timestamptz(6)
+  documentKey   String?
+  settlement    Settlement @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@index([settlementId, issuedAt])
+  @@map("settlement_statements")
+}
+
+model PlatformSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       Json
+  description String?
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  updatedBy   AdminEmployee? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("platform_settings")
 }
 
 model AuditLog {
-  action     String
-  actorId    String
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  entityId   String
-  entityType String
-  id         String   @id @default(uuid())
+  id           String    @id @default(uuid()) @db.Uuid
+  actorType    ActorType @default(ADMIN_EMPLOYEE)
+  actorId      String?
+  action       String
+  entityType   String
+  entityId     String
+  before       Json?
+  after        Json?
+  ipAddress    String?
+  userAgent    String?
+  requestId    String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
 
-  @@map("auditLog")
+  @@index([entityType, entityId, createdAt])
+  @@index([actorType, actorId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model OutboxEvent {
+  id           String    @id @default(uuid()) @db.Uuid
+  eventType    String
+  aggregateType String
+  aggregateId  String
+  payload      Json
+  availableAt  DateTime  @default(now()) @db.Timestamptz(6)
+  processedAt  DateTime? @db.Timestamptz(6)
+  attempts     Int       @default(0)
+  lastError    String?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([processedAt, availableAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
 }
