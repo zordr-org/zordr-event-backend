@@ -18,7 +18,14 @@ Thumbs.db
 coverage
 
 Dockerfile
-docker-compose.yml
+docker-compose.yaml
 .dockerignore
 README.md
-prisma-next.md
+
+.claude
+.cursor
+.devin
+.agents
+skills-lock.json
+
+test
