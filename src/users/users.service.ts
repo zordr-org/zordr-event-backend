@@ -27,7 +27,7 @@ export class UsersService {
     }
   }
 
-  async getProfile(userId: string) {
+   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { organizer: true },
