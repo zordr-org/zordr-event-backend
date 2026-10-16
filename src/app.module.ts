@@ -20,6 +20,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UsersModule,
     OrganizerModule,
     AdminAuthModule,
+    NeonWebhooksModule,
   ],
   controllers: [AppController],
   providers: [
