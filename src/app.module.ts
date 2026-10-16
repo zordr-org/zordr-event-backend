@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module.js';
 import { OrganizerModule } from './organizer/organizer.module.js';
 import { AdminAuthModule } from './admin-auth/admin-auth.module.js';
 import { AdminIpAllowlistMiddleware } from './admin-auth/admin-ip-allowlist.middleware.js';
+import { NeonWebhooksModule } from './webhooks/neon-webhooks.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 

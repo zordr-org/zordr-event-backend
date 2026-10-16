@@ -1,33 +1,73 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+
+type AuthUser = {
+  id?: unknown;
+  sub?: unknown;
+  name?: unknown;
+  email?: unknown;
+  image?: unknown;
+};
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findOrSyncFromClaims(claims: Record<string, unknown>) {
-    const id = claims.sub as string;
+  async syncAuthUser(authUser: AuthUser) {
+    const rawId = authUser.id ?? authUser.sub;
 
-    try {
-      return await this.prisma.user.upsert({
-        where: { id },
-        update: {},
-        create: {
-          id,
-          name: (claims.name as string) ?? '',
-          domain_email: (claims.email as string) ?? '',
-          phone: '',
-          college: '',
-          branch: '',
-          year: 0,
-        },
-      });
-    } catch {
-      return this.prisma.user.findUniqueOrThrow({ where: { id } });
+    if (typeof rawId !== 'string' || !rawId.trim()) {
+      throw new UnauthorizedException('Missing authenticated user ID');
     }
+
+    const id = rawId.trim();
+    const name =
+      typeof authUser.name === 'string' && authUser.name.trim()
+        ? authUser.name.trim()
+        : undefined;
+    const email =
+      typeof authUser.email === 'string' && authUser.email.trim()
+        ? authUser.email.trim().toLowerCase()
+        : undefined;
+    const avatar =
+      typeof authUser.image === 'string' && authUser.image.trim()
+        ? authUser.image.trim()
+        : undefined;
+
+    return this.prisma.user.upsert({
+  where: { id },
+  create: {
+    id,
+    name: name ?? '',
+    domain_email: email ?? '',
+    avatar: avatar ?? null,
+    phone: '',
+    college: '',
+    branch: '',
+    year: 0,
+  },
+  update: {
+    ...(name !== undefined ? { name } : {}),
+    ...(email !== undefined ? { domain_email: email } : {}),
+    ...(avatar !== undefined ? { avatar } : {}),
+  },
+});
   }
 
-   async getProfile(userId: string) {
+  async findOrSyncFromClaims(claims: Record<string, unknown>) {
+    return this.syncAuthUser({
+      id: claims.sub,
+      name: claims.name,
+      email: claims.email,
+      image: claims.image,
+    });
+  }
+
+  async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { organizer: true },
@@ -41,7 +81,7 @@ export class UsersService {
       id: user.id,
       name: user.name,
       email: user.domain_email,
-      isOrganizer: !!user.organizer,
+      isOrganizer: Boolean(user.organizer),
     };
   }
 }

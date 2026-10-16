@@ -9,7 +9,11 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 async function bootstrap() {
   validateEnv();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule,
+    {
+      rawBody: true,
+    }
+  );
 
   if (process.env.TRUST_PROXY === 'true') {
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
