@@ -70,20 +70,23 @@ export class NeonWebhookVerifier {
       throw new UnauthorizedException('Unknown webhook signing key');
     }
 
-    const [headerB64, emptyPayload, signatureB64] = signature.split('.');
+const parts = signature.split('.');
 
-    if (!headerB64 || emptyPayload !== '' || !signatureB64) {
-      throw new UnauthorizedException('Invalid detached signature format');
-    }
+if (
+  parts.length !== 3 ||
+  !parts[0] ||
+  parts[1] !== '' ||
+  !parts[2]
+) {
+  throw new UnauthorizedException('Invalid detached signature format');
+}
 
-    const publicKey = createPublicKey({
-      key: jwk as Parameters<typeof createPublicKey>[0] extends {
-        key: infer K;
-      }
-        ? K
-        : never,
-      format: 'jwk',
-    });
+const [headerB64, , signatureB64] = parts;
+
+ const publicKey = createPublicKey({
+  key: jwk as any,
+  format: 'jwk',
+});
 
     // Neon signs the base64url-encoded raw body together with its timestamp.
     const bodyB64 = rawBody.toString('base64url');
