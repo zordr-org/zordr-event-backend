@@ -17,46 +17,57 @@ type AuthUser = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async syncAuthUser(authUser: AuthUser) {
-    const rawId = authUser.id ?? authUser.sub;
+  
+async syncAuthUser(authUser: {
+  id?: unknown;
+  sub?: unknown;
+  name?: unknown;
+  email?: unknown;
+  image?: unknown;
+}) {
+  const rawId = authUser.id ?? authUser.sub;
 
-    if (typeof rawId !== 'string' || !rawId.trim()) {
-      throw new UnauthorizedException('Missing authenticated user ID');
-    }
-
-    const id = rawId.trim();
-    const name =
-      typeof authUser.name === 'string' && authUser.name.trim()
-        ? authUser.name.trim()
-        : undefined;
-    const email =
-      typeof authUser.email === 'string' && authUser.email.trim()
-        ? authUser.email.trim().toLowerCase()
-        : undefined;
-    const avatar =
-      typeof authUser.image === 'string' && authUser.image.trim()
-        ? authUser.image.trim()
-        : undefined;
-
-    return this.prisma.user.upsert({
-  where: { id },
-  create: {
-    id,
-    name: name ?? '',
-    domain_email: email ?? '',
-    avatar: avatar ?? null,
-    phone: '',
-    college: '',
-    branch: '',
-    year: 0,
-  },
-  update: {
-    ...(name !== undefined ? { name } : {}),
-    ...(email !== undefined ? { domain_email: email } : {}),
-    ...(avatar !== undefined ? { avatar } : {}),
-  },
-});
+  if (typeof rawId !== 'string' || !rawId.trim()) {
+    throw new Error('Missing Neon Auth user ID');
   }
+
+  if (typeof authUser.email !== 'string' || !authUser.email.trim()) {
+    throw new Error('Missing Neon Auth user email');
+  }
+
+  const id = rawId.trim();
+  const email = authUser.email.trim().toLowerCase();
+
+  const name =
+    typeof authUser.name === 'string' && authUser.name.trim()
+      ? authUser.name.trim()
+      : '';
+
+  const avatarUrl =
+    typeof authUser.image === 'string' && authUser.image.trim()
+      ? authUser.image.trim()
+      : null;
+
+  return this.prisma.user.upsert({
+    where: { id },
+    create: {
+      id,
+      name,
+      domain_email: email,
+      avatarUrl,
+      phone: '',
+      college: '',
+      branch: '',
+      year: 0,
+    },
+    update: {
+      name,
+      domain_email: email,
+      avatarUrl,
+    },
+  });
+}
+
 
   async findOrSyncFromClaims(claims: Record<string, unknown>) {
     return this.syncAuthUser({
